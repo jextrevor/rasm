@@ -11,9 +11,6 @@ print passkey
 @app.route("/")
 def main():
 	return render_template("index.html")
-@app.route("/test/")
-def test():
-	return render_template("station.html",name="test")
 @app.route("/fd/", methods=['POST'])
 def fd():
 	if request.form['passkey'] != passkey:
