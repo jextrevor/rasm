@@ -1,5 +1,6 @@
 import threading
 Ship = {}
+Config = {}
 class System:
     def __init__(self):
         self.values = {}
@@ -38,14 +39,38 @@ class Lights(System):
     def power_lights_changed(self,value):
         if value > self.values["brightness"]:
             self.set("brightness",value)
+class Sensors(System):
+    def __init__(self):
+        System.__init__(self)
+        self.add("health",100)
+class SolarPower(System):
+    def __init__(self):
+        System.__init__(self)
+        self.add("available",0)
 class BatteryPower(System):
     def __init__(self):
         System.__init__(self)
         self.add("available",1000)
-class EnginePower(System):
+class NuclearPower(System):
     def __init__(self):
         System.__init__(self)
         self.add("available",0)
+        self.add("health",100)
+    def power_nuclear_changed(self,value):
+        if value < (100-self.values["health"])*5:
+            self.set("available",0)
+    def health_changed(self,value):
+        if Ship["Power"].values["power_nuclear"] < (100-value)*5:
+            self.set("available",0)
+        if value < Config["nuclear_min_health"]:
+            self.set("available",0)
+    def startReactor(self):
+        if Ship["Power"].values["power_nuclear"] < Config["nuclear_min_start_power"]:
+            return False
+        if self.values["health"] < Config["nuclear_min_start_health"]:
+            return False
+        self.set("available",10000)
+        return True
 class Power(System):
     def __init__(self):
         System.__init__(self)
@@ -53,10 +78,13 @@ class Power(System):
         self.add("in_use",0)
         self.add("power_shields",0)
         self.add("power_lights",0)
+        self.add("power_nuclear",0)
     def batterypower_changed(self,value):
-        self.set("total",value+Ship["EnginePower"].values["available"])
-    def enginepower_changed(self,value):
-        self.set("total",value+Ship["BatteryPower"].values["available"])
+        self.set("total",value+Ship["NuclearPower"].values["available"]+Ship["SolarPower"].values["available"])
+    def nuclearpower_changed(self,value):
+        self.set("total",value+Ship["BatteryPower"].values["available"]+Ship["SolarPower"].values["available"])
+    def solarpower_changed(self,value):
+        self.set("total",value+Ship["BatteryPower"].values["available"]+Ship["NuclearPower"].values["available"])
     def totalpower_changed(self,value):
         if self.values["in_use"] > self.values["total"]:
             remaining = self.values["in_use"] - self.values["total"]
@@ -75,6 +103,13 @@ class Power(System):
                     else:
                         remaining -= self.values["power_shields"]
                         self.set("power_shields",0)
+                if self.values["power_nuclear"] > 0:
+                    if self.values["power_nuclear"] > remaining:
+                        self.set("power_nuclear",self.values["power_nuclear"]-remaining)
+                        remaining = 0
+                    else:
+                        remaining -= self.values["power_nuclear"]
+                        self.set("power_nuclear",0)
             self.set("in_use",self.values["total"])
     def requestPower(self,system,value):
         mag = value - self.values["power_"+system]
@@ -94,57 +129,44 @@ class Shields(System):
     def raiseShields(self): #Intent to raise shields.
         if self.values["status"] == True:
             return True
-        if Ship["Power"].values["power_shields"] >= 50 and self.values["health"] >= 50:
+        if Ship["Power"].values["power_shields"] >= Config["shields_min_power"] and self.values["health"] >= Config["shields_min_health"]:
             self.set("status",True)
             return True
         return False
     def power_shields_changed(self,value):
-        if value < 50:
+        if value < Config["shields_min_power"]:
             self.set("status",False)
     def health_changed(self,value):
-        if value < 50:
+        if value < Config["shields_min_health"]:
             self.set("status",False)
 def init():
     Ship["Alerts"] = Alerts()
     Ship["Lights"] = Lights()
     Ship["BatteryPower"] = BatteryPower()
-    Ship["EnginePower"] = EnginePower()
+    Ship["NuclearPower"] = NuclearPower()
+    Ship["SolarPower"] = SolarPower()
     Ship["Power"] = Power()
     Ship["Shields"] = Shields()
     Ship["BatteryPower"].watch("available",Ship["Power"].batterypower_changed)
+    Ship["NuclearPower"].watch("available",Ship["Power"].nuclearpower_changed)
     Ship["Power"].watch("total",Ship["Power"].totalpower_changed)
     Ship["BatteryPower"].update()
 init()
-print Ship["Power"].requestPower("lights",50)
-print Ship["Power"].requestPower("lights",50)
-print Ship["Power"].requestPower("lights",50)
-print Ship["Power"].requestPower("lights",50)
-print Ship["Power"].requestPower("lights",50)
-print Ship["Power"].requestPower("lights",50)
-print Ship["Power"].requestPower("lights",50)
-print Ship["Power"].requestPower("lights",50)
-print Ship["Power"].requestPower("lights",50)
-print Ship["Power"].requestPower("lights",50)
-print Ship["Power"].requestPower("lights",50)
-
-print Ship["Lights"].adjustLights(60)
-print Ship["Lights"].adjustLights(60)
-print Ship["Lights"].adjustLights(60)
-print Ship["Lights"].adjustLights(60)
-print Ship["Lights"].adjustLights(60)
-print Ship["Lights"].adjustLights(60)
-print Ship["Lights"].adjustLights(60)
-print Ship["Lights"].adjustLights(60)
-print Ship["Lights"].adjustLights(60)
-print Ship["Lights"].adjustLights(60)
-print Ship["Lights"].adjustLights(60)
-print Ship["Lights"].adjustLights(50)
-print Ship["Lights"].adjustLights(50)
-print Ship["Lights"].adjustLights(50)
-print Ship["Lights"].adjustLights(50)
-print Ship["Lights"].adjustLights(50)
-print Ship["Lights"].adjustLights(50)
-print Ship["Lights"].adjustLights(50)
-print Ship["Lights"].adjustLights(50)
-print Ship["Lights"].adjustLights(50)
-print Ship["Lights"].adjustLights(50)
+print Ship["Power"].requestPower("nuclear",950)
+print Ship["Power"].requestPower("nuclear",950)
+print Ship["Power"].requestPower("nuclear",950)
+print Ship["Power"].requestPower("nuclear",950)
+print Ship["Power"].requestPower("nuclear",950)
+print Ship["Power"].requestPower("nuclear",950)
+print Ship["Power"].requestPower("nuclear",950)
+print Ship["Power"].requestPower("nuclear",950)
+print Ship["Power"].requestPower("nuclear",950)
+print Ship["Power"].requestPower("nuclear",950)
+print Ship["NuclearPower"].startReactor()
+print Ship["NuclearPower"].startReactor()
+print Ship["NuclearPower"].startReactor()
+print Ship["NuclearPower"].startReactor()
+print Ship["NuclearPower"].startReactor()
+print Ship["NuclearPower"].startReactor()
+print Ship["NuclearPower"].startReactor()
+print Ship["Power"].values["total"]
