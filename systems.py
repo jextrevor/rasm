@@ -132,7 +132,41 @@ class Course(System):
         if self.Repair.course < some config value:
             self.status = False
     def activity(self):
+        pass
         #Orient the ship to the target rotations.
+class Power(System):
+    def __init__(self):
+        System.__init__(self)
+class Battery(System):
+    def __init__(self):
+        System.__init__(self)
+class Generator(System):
+    def __init__(self):
+        System.__init__(self)
+class Repair(System):
+    def __init__(self):
+        System.__init__(self)
+class Sensors(System):
+    def __init__(self):
+        System.__init__(self)
+class Radar(System):
+    def __init__(self):
+        System.__init__(self)
+class Radio(System):
+    def __init__(self):
+        System.__init__(self)
+class Targeting(System):
+    def __init__(self):
+        System.__init__(self)
+class Lasers(System):
+    def __init__(self):
+        System.__init__(self)
+class Security(System):
+    def __init__(self):
+        System.__init__(self)
+class Transporter(System):
+    def __init__(self):
+        System.__init__(self)
 #The target velocity needs to be calculated. This involves calculating the ship's current pitch and yaw and making a directional vector, then multiplying it by the target speed.
 #Next, the difference between the target velocity and the current velocity needs to be calculated.
 #Next, the engine needs to normalize the difference, and apply a force along it.
