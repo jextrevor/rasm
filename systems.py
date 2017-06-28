@@ -1,172 +1,130 @@
 import threading
-Ship = {}
-Config = {}
+import time
+from multiprocessing import Process
+class Main:
+    def __init__(self):
+        self.activities = []
+    def start(self):
+        for function in self.activities:
+            p = Process(target = function, args=())
+            p.start()
+def watch(name,value):
+    def real_decorator(function):
+        """try:
+            try:
+                self.watches[name][value].append(function)
+            except AttributeError:
+                self.watches[name][value] = []
+                self.watches[name][value].append(function)
+        except KeyError:
+            self.watches[name] = {}
+            self.watches[name][value] = []
+            self.watches[name][value].append(function)"""
+        function.watch = (name,value)
+        return function
+    return real_decorator
+main = Main()
 class System:
     def __init__(self):
-        self.values = {}
         self.watches = {}
-    def add(self,name,value):
-        self.values[name] = value
-        self.watches[name] = []
-    def set(self,name,value):
-        self.values[name] = value
-        for function in self.watches[name]:
-            threading.Thread(target=function,args=(value,)).start()
-    def watch(self,name,callback):
-        self.watches[name].append(callback)
-    def unwatch(self,name,callback):
-        self.watches[name].remove(callback)
-    def update(self):
-        for k, v in self.watches.items():
-            for function in v:
-                threading.Thread(target=function,args=(self.values[k],)).start()
-class Alerts(System):
-    def __init__(self):
+        main.activities.append(self.run)
+    def __setattr__(self,attr,value):
+        self.__dict__[attr] = value
+        """for function in [a for a in dir(self) if not a.startswith('__')]:
+            try:
+                if getattr(self,function).watch[0] == attr:
+                    value.observe(getattr(self,function).watch[1],getattr(self,function))
+            except AttributeError:
+                pass"""
+        try:
+            for function in self.watches[attr]:
+                threading.Thread(target=function,args=(value,)).start()
+        except KeyError:
+            self.watches[attr] = []
+    def attach(self,attr,value):
+        try:
+            self.__dict__[attr].append(value)
+        self.__dict__[attr] = value
+        for function in [a for a in dir(self) if not a.startswith('__')]:
+            try:
+                if getattr(self,function).watch[0] == attr:
+                    value.observe(getattr(self,function).watch[1],getattr(self,function))
+            except AttributeError:
+                pass
+    def run(self):
+        while True:
+            try:
+                self.newtime = time.time()
+                self.delta = self.newtime - self.time
+                self.time = self.newtime
+            except AttributeError:
+                self.delta = 0
+                self.time = time.time()
+            self.activity()
+    def activity(self):
+        pass
+    def observe(self,value,function):
+        try:
+            self.watches[value].append(function)
+        except KeyError:
+            self.watches[value] = []
+            self.watches[value].append(function)
+class PowerConduit(System):
+    def __init__(self,name,priority):
         System.__init__(self)
-        self.add("status",0) #Green Alert
-    def changeStatus(self,status): #Intent to change status.
-        self.set("status",status)
+        self.name = name
+        self.power = 0
+        self.priority = 0
+    def requestPower(self,power):
+        mag = power - self.power
+        if self.Power.requestPower(mag):
+            self.power = power
+            return True
+        return False
+    def changePriority(self,priority):
+        self.priority = priority
         return True
-class Lights(System):
-    def __init__(self):
-        System.__init__(self)
-        self.add("brightness",0)
-    def adjustLights(self,value):
-        if Ship["Power"].values["power_lights"] < value:
-            return False
-        self.set("brightness",value)
-        return True
-    def power_lights_changed(self,value):
-        if value > self.values["brightness"]:
-            self.set("brightness",value)
-class Sensors(System):
-    def __init__(self):
-        System.__init__(self)
-        self.add("health",100)
-class SolarPower(System):
-    def __init__(self):
-        System.__init__(self)
-        self.add("available",0)
-class BatteryPower(System):
-    def __init__(self):
-        System.__init__(self)
-        self.add("available",1000)
-class NuclearPower(System):
-    def __init__(self):
-        System.__init__(self)
-        self.add("available",0)
-        self.add("health",100)
-    def power_nuclear_changed(self,value):
-        if value < (100-self.values["health"])*5:
-            self.set("available",0)
-    def health_changed(self,value):
-        if Ship["Power"].values["power_nuclear"] < (100-value)*5:
-            self.set("available",0)
-        if value < Config["nuclear_min_health"]:
-            self.set("available",0)
-    def startReactor(self):
-        if Ship["Power"].values["power_nuclear"] < Config["nuclear_min_start_power"]:
-            return False
-        if self.values["health"] < Config["nuclear_min_start_health"]:
-            return False
-        self.set("available",10000)
-        return True
+    def lowerPower(self,request):
+        if request > self.power:
+            t = self.power
+            self.power = 0
+            return t
+        else:
+            self.power -= request
+            return request
 class Power(System):
     def __init__(self):
         System.__init__(self)
-        self.add("total",0)
-        self.add("in_use",0)
-        self.add("power_shields",0)
-        self.add("power_lights",0)
-        self.add("power_nuclear",0)
-    def batterypower_changed(self,value):
-        self.set("total",value+Ship["NuclearPower"].values["available"]+Ship["SolarPower"].values["available"])
-    def nuclearpower_changed(self,value):
-        self.set("total",value+Ship["BatteryPower"].values["available"]+Ship["SolarPower"].values["available"])
-    def solarpower_changed(self,value):
-        self.set("total",value+Ship["BatteryPower"].values["available"]+Ship["NuclearPower"].values["available"])
-    def totalpower_changed(self,value):
-        if self.values["in_use"] > self.values["total"]:
-            remaining = self.values["in_use"] - self.values["total"]
-            while remaining > 0:
-                if self.values["power_lights"] > 0:
-                    if self.values["power_lights"] > remaining:
-                        self.set("power_lights",self.values["power_lights"]-remaining)
-                        remaining = 0
-                    else:
-                        remaining -= self.values["power_lights"]
-                        self.set("power_lights",0)
-                if self.values["power_shields"] > 0:
-                    if self.values["power_shields"] > remaining:
-                        self.set("power_shields",self.values["power_shields"]-remaining)
-                        remaining = 0
-                    else:
-                        remaining -= self.values["power_shields"]
-                        self.set("power_shields",0)
-                if self.values["power_nuclear"] > 0:
-                    if self.values["power_nuclear"] > remaining:
-                        self.set("power_nuclear",self.values["power_nuclear"]-remaining)
-                        remaining = 0
-                    else:
-                        remaining -= self.values["power_nuclear"]
-                        self.set("power_nuclear",0)
-            self.set("in_use",self.values["total"])
-    def requestPower(self,system,value):
-        mag = value - self.values["power_"+system]
-        if self.values["in_use"]+mag > self.values["total"]:
+        self.total = 0
+        self.in_use = 0
+        self.Source = []
+    @watch("Source","available")
+    def power_changed(self,value):
+        pass
+class Lights(System):
+    def __init__(self)
+        System.__init__(self)
+        self.brightness = 0
+    def adjustLights(self,value):
+        if self.Conduit.power < value:
             return False
-        self.set("in_use",self.values["in_use"]+mag)
-        self.set("power_"+system,value)
+        self.brightness = value
         return True
-class Shields(System):
+    @watch("Conduit","power")
+    def power_changed(self,value):
+        if value > self.brightness:
+            self.brightness = value
+class Alerts(System):
     def __init__(self):
         System.__init__(self)
-        self.add("health",100)
-        self.add("status",False)
-    def lowerShields(self):
-        self.set("status",False)
+        self.status = 0
+    def changeStatus(self,status):
+        self.status = status
         return True
-    def raiseShields(self): #Intent to raise shields.
-        if self.values["status"] == True:
-            return True
-        if Ship["Power"].values["power_shields"] >= Config["shields_min_power"] and self.values["health"] >= Config["shields_min_health"]:
-            self.set("status",True)
-            return True
-        return False
-    def power_shields_changed(self,value):
-        if value < Config["shields_min_power"]:
-            self.set("status",False)
-    def health_changed(self,value):
-        if value < Config["shields_min_health"]:
-            self.set("status",False)
-def init():
-    Ship["Alerts"] = Alerts()
-    Ship["Lights"] = Lights()
-    Ship["BatteryPower"] = BatteryPower()
-    Ship["NuclearPower"] = NuclearPower()
-    Ship["SolarPower"] = SolarPower()
-    Ship["Power"] = Power()
-    Ship["Shields"] = Shields()
-    Ship["BatteryPower"].watch("available",Ship["Power"].batterypower_changed)
-    Ship["NuclearPower"].watch("available",Ship["Power"].nuclearpower_changed)
-    Ship["Power"].watch("total",Ship["Power"].totalpower_changed)
-    Ship["BatteryPower"].update()
-init()
-print Ship["Power"].requestPower("nuclear",950)
-print Ship["Power"].requestPower("nuclear",950)
-print Ship["Power"].requestPower("nuclear",950)
-print Ship["Power"].requestPower("nuclear",950)
-print Ship["Power"].requestPower("nuclear",950)
-print Ship["Power"].requestPower("nuclear",950)
-print Ship["Power"].requestPower("nuclear",950)
-print Ship["Power"].requestPower("nuclear",950)
-print Ship["Power"].requestPower("nuclear",950)
-print Ship["Power"].requestPower("nuclear",950)
-print Ship["NuclearPower"].startReactor()
-print Ship["NuclearPower"].startReactor()
-print Ship["NuclearPower"].startReactor()
-print Ship["NuclearPower"].startReactor()
-print Ship["NuclearPower"].startReactor()
-print Ship["NuclearPower"].startReactor()
-print Ship["NuclearPower"].startReactor()
-print Ship["Power"].values["total"]
+s1 = Alerts()
+s2 = Alerts()
+s1.attach("Alerts",s2)
+#How to handle power?
+#main.start()
+#Each system stores other systems it needs as attributes.
+#Each system has a "start" function that sets up all watches.
