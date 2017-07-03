@@ -61,7 +61,7 @@ class System:
                 self.delta = self.newtime - self.time
                 self.time = self.newtime
             except AttributeError:
-                self.delta = 0
+                self.delta = 0.0
                 self.time = time.time()
             self.activity()
     def activity(self):
@@ -86,14 +86,13 @@ class Object(System):
         self.x = x
         self.y = y
         self.z = z
-        self.vx = 0
-        self.vy = 0
-        self.vz = 0
-        self.ax = 0
-        self.ay = 0
-        self.az = 0
+        self.vx = 0.0
+        self.vy = 0.0
+        self.vz = 0.0
+        self.ax = 0.0
+        self.ay = 0.0
+        self.az = 0.0
         self.name = name
-        self.counter = 0
     def activity(self):
         self.x += self.vx*self.delta + 0.5*self.ax*self.delta*self.delta
         self.y += self.vy*self.delta + 0.5*self.ay*self.delta*self.delta
@@ -101,11 +100,13 @@ class Object(System):
         self.vx = self.vx + self.ax*self.delta
         self.vy = self.vy + self.ay*self.delta
         self.vz = self.vz + self.az*self.delta
-        self.counter += 1
-    def test(self,x):
-        self.x = x
     def damage(self,factor):
         pass
+    def destroy(self):
+        main.objects.remove(self)
+        for cargo in self.cargoes:
+            cargo.destroy()
+#Needs Damage and Object Checking.
 class Shuttle(Object):
     def __init__(self,x,y,z,name):
         Object.__init__(self,x,y,z,name)
@@ -115,12 +116,12 @@ class Shuttle(Object):
             self.x = self.location.x
             self.y = self.location.y
             self.z = self.location.z
-            #self.vx = 0
-            self.vy = 0
-            self.vz = 0
-            self.ax = 0
-            self.ay = 0
-            self.az = 0
+            #self.vx = 0.0
+            self.vy = 0.0
+            self.vz = 0.0
+            self.ax = 0.0
+            self.ay = 0.0
+            self.az = 0.0
         else:
             Object.activity(self)
     def dock(self,location):
@@ -150,6 +151,8 @@ class Cargo(System):
             self.location.cargoes.append(self)
             return True
         return "Distance too far."
+    def destroy(self):
+        pass
 def distance(l1,l2):
     try:
         xl1 = l1.x
@@ -200,9 +203,9 @@ class Lights(System):
 class Course(System):
     def __init__(self):
         System.__init__(self)
-        self.x = 0
-        self.y = 0
-        self.z = 0
+        self.x = 0.0
+        self.y = 0.0
+        self.z = 0.0
         self.status = False
     def setCourse(self,x,y,z):
         self.x = x
@@ -275,9 +278,9 @@ class Repair(System):
 class Sensors(System):
     def __init__(self):
         System.__init__(self)
-        self.x = 0
-        self.y = 0
-        self.z = 0
+        self.x = 0.0
+        self.y = 0.0
+        self.z = 0.0
 #Infrared based positioning and locating system.
 class Radar(System):
     def __init__(self):
@@ -322,26 +325,29 @@ class Armor(System):
 class Engine(System):
     def __init__(self):
         System.__init__(self)
-#ship = Ship(0,0,0,"Enterprise","USS")
-#ship2 = Ship(0,49.9,0,"Enterprise2","USS")
-#c1 = Cargo(ship,"Engine Room")
-#c2 = Cargo(ship,"Shuttle Bay 1")
-#s1 = Security()
-#s2 = SecurityTeam(c1,"Team1")
-#s3 = Shuttle(0,0,0,"Shuttle1")
-#s3.dock(ship)
-#attach(s2,s1)
-#attach(s1,ship)
-#ship.Security.SecurityTeam[0].transfer(s3)
-#print(ship.Security.SecurityTeam[0].location.name)
-#s3.undock()
-#print(s3.location)
-#s3.vx = 1000
-#time.sleep(5)
-#print(s3.x)
-#s3.vx = 0
-#ship.Security.SecurityTeam[0].transfer(c1)
-#print(ship.Security.SecurityTeam[0].location.name)
+ship = Ship(0,0,0,"Enterprise","USS")
+ship2 = Ship(0,49.9,0,"Enterprise2","USS")
+c1 = Cargo(ship,"Engine Room")
+c2 = Cargo(ship,"Shuttle Bay 1")
+s1 = Security()
+s2 = SecurityTeam(c1,"Team1")
+s3 = Shuttle(0,0,0,"Shuttle1")
+s3.dock(ship)
+attach(s2,s1)
+attach(s1,ship)
+main.start()
+ship.Security.SecurityTeam[0].transfer(s3)
+print(ship.Security.SecurityTeam[0].location.name)
+s3.undock()
+print(s3.location)
+print s3.vx
+s3.vx = 1000
+print s3.vx
+time.sleep(5)
+print(s3.x)
+s3.vx = 0.0
+ship.Security.SecurityTeam[0].transfer(c1)
+print(ship.Security.SecurityTeam[0].location.name)
 #How to handle power?
 #main.start()
 #Each system stores other systems it needs as attributes.
