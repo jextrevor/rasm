@@ -78,6 +78,10 @@ class System:
                 threading.Thread(target=function,args=()).start()
         except KeyError:
             self.watches[attr] = []
+    def update(self):
+        for key in self.watches:
+            for function in self.watches[key]:
+                threading.Thread(target = function,args=()).start()
 class Object(System):
     def __init__(self,x,y,z,name):
         System.__init__(self)
@@ -93,6 +97,7 @@ class Object(System):
         self.ay = 0.0
         self.az = 0.0
         self.name = name
+        self.properties = []
     def activity(self):
         self.x += self.vx*self.delta + 0.5*self.ax*self.delta*self.delta
         self.y += self.vy*self.delta + 0.5*self.ay*self.delta*self.delta
@@ -127,7 +132,7 @@ class Shuttle(Object):
     def dock(self,location):
         if self.location != None:
             return "Detach first."
-        if distance(self,location) < 50*50:
+        if distance(self,location) < some config value*some config value:
             self.location = location
             self.location.cargoes.append(self)
             return True
@@ -145,7 +150,7 @@ class Cargo(System):
         self.location.cargoes.append(self)
         self.name = name
     def transfer(self,location):
-        if distance(self.location,location) < 50*50:
+        if distance(self.location,location) < some config value*some config value:
             self.location.cargoes.remove(self)
             self.location = location
             self.location.cargoes.append(self)
@@ -153,6 +158,12 @@ class Cargo(System):
         return "Distance too far."
     def destroy(self):
         pass
+def within(subject,distance):
+    returning = []
+    for obj in main.objects:
+        if distance(obj,subject) < distance and obj != subject:
+            returning.append(obj)
+    return returning
 def distance(l1,l2):
     try:
         xl1 = l1.x
@@ -233,30 +244,153 @@ class Course(System):
         #Set the thrusters to go in that direction.
         return True
     def changeStatus(self,status):
-        if status == True and self.Repair.course > 50:
+        if status == True and self.Repair.course > some config value and self.Power.course > some config value:
             self.status = True
             return True
-        if status == True:
+        if status == True and self.Power.course > some config value:
             return "System damaged."
+        if status == True:
+            return "Insufficient power."
         if status == False:
             self.status = False
             return True
     @watch("Repair","course")
     def damage_changed(self):
-        if self.Repair.course < 50:
+        if self.Repair.course < some config value:
+            self.status = False
+    @watch("Power","course")
+    def damage_changed(self):
+        if self.Power.course < some config value:
             self.status = False
 #Power transformer, manager and switcher.
 class Power(System):
     def __init__(self):
         System.__init__(self)
+        self.lights = 0
+        self.battery = 0
+        self.sensors = 0
+        self.radio = 0
+        self.engine = 0
+        self.radar = 0
+        self.lasers = 0
+        self.transporter = 0
+        self.targeting = 0
+        self.security = 0
+        self.thrusters = 0
+        self.course = 0
+        self.generator = 0
+        self.armor = 0
+        self.in_use = 0
+        self.available = 0
+        self.priority = ["lights","battery","sensors","radio","engine","radar","lasers","transporter","targeting","security","thrusters","course","generator","armor"]
+    @watch("Battery","available")
+    def battery_available(self):
+        self.available = self.Battery.available + self.Solar.available + self.Generator.available
+        self.available_changed()
+    @watch("Solar","available")
+    def solar_available(self):
+        self.available = self.Battery.available + self.Solar.available + self.Generator.available
+        self.available_changed()
+    @watch("Generator","available")
+    def generator_available(self):
+        self.available = self.Battery.available + self.Solar.available + self.Generator.available
+        self.available_changed()
+    def available_changed(self):
+        if self.in_use > self.available:
+            self.lower_power()
+    def in_use_changed(self):
+        remaining = self.in_use
+        while remaining > 0:
+            if self.Solar.available > 0:
+                if self.Solar.available > remaining:
+                    self.Solar.in_use = remaining
+                else:
+                    self.Solar.in_use = self.Solar.available
+                    remaining -= self.Solar.available
+            if self.Generator.available > 0:
+                if self.Generator.available > remaining:
+                    self.Generator.in_use = remaining
+                else:
+                    self.Generator.in_use = self.Generator.available
+                    remaining -= self.Generator.available
+            if self.Battery.available > 0:
+                if self.Battery.available > remaining:
+                    self.Battery.in_use = remaining
+                else:
+                    self.Battery.in_use = self.Battery.available
+                    remaining -= self.Battery.available
+    def lower_power(self):
+        remaining = self.in_use - self.available
+        counter = 0
+        while remaining > 0:
+            if self.__dict__[self.priority[counter]] > 0:
+                if self.__dict__[self.priority[counter]] > remaining:
+                    self.__dict__[self.priority[counter]] -= remaining
+                    remaining = 0
+                else:
+                    remaining -= self.__dict__[self.priority[counter]]
+                    self.__dict__[self.priority[counter]] = 0
+        self.in_use_changed()
+    def requestPower(self,system,value):
+        mag = value - self.__dict__[system]
+        if self.in_use+mag > self.available:
+            return "Insufficient power available."
+        self.in_use += mag
+        self.__dict__[system] = value
+        self.in_use_changed()
+        return True
 #Large lithium-ion power banks.
 class Battery(System):
     def __init__(self):
         System.__init__(self)
+        self.available = 0
+        self.max_draw = 0
+        self.capacity = 0
+        self.in_use = 0
+    def activity(self):
+        self.capacity -= self.in_use*self.delta
+        self.capacity += self.Power.battery*self.delta
+        if self.capacity < 0:
+            self.capacity = 0
+            self.available = 0
+        else:
+            self.available = self.max_draw
 #Nuclear fusion-based generator.
 class Generator(System):
     def __init__(self):
         System.__init__(self)
+        self.available = 0
+        self.in_use = 0
+        self.status = False
+    def setStatus(self,status):
+        if status == False:
+            self.status = False
+            self.available = 0
+            return True
+        if self.Power.generator < some config value:
+            return False
+        if self.Repair.generator < some config value:
+            return False
+        self.available = self.Repair.generator * some config value
+        self.status = True
+        return True
+    @watch("Repair","generator")
+    def repair_changed(self):
+        if self.status = True:
+            if self.Repair.generator > some config value:
+                self.available = self.Repair.generator * some config value
+            else:
+                self.status = False
+class Solar(System):
+    def __init__(self):
+        System.__init__(self)
+        self.available = 0
+        self.in_use = 0
+    def activity(self):
+        self.available = 0
+        for obj in within(self.Ship,some config value):
+            if "solar" in obj.properties:
+                #Algorithm to calculate available light.
 #Bot-based basic repairing and replacing system.
 class Repair(System):
     def __init__(self):
@@ -274,6 +408,7 @@ class Repair(System):
         self.transporter = 100
         self.thrusters = 100
         self.engine = 100
+        self.armor = 100
 #Positioning using long-range satellite transmissions, and data analysis.
 class Sensors(System):
     def __init__(self):
