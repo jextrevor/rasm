@@ -368,9 +368,9 @@ class Generator(System):
             self.available = 0
             return True
         if self.Power.generator < some config value:
-            return False
+            return "Not enough power."
         if self.Repair.generator < some config value:
-            return False
+            return "System damaged."
         self.available = self.Repair.generator * some config value
         self.status = True
         return True
@@ -390,7 +390,7 @@ class Solar(System):
         self.available = 0
         for obj in within(self.Ship,some config value):
             if "solar" in obj.properties:
-                #Algorithm to calculate available light.
+                #Algorithm to calculate available light. Take into account damage
 #Bot-based basic repairing and replacing system.
 class Repair(System):
     def __init__(self):
@@ -409,6 +409,7 @@ class Repair(System):
         self.thrusters = 100
         self.engine = 100
         self.armor = 100
+        self.solar = 100
 #Positioning using long-range satellite transmissions, and data analysis.
 class Sensors(System):
     def __init__(self):
@@ -416,20 +417,41 @@ class Sensors(System):
         self.x = 0.0
         self.y = 0.0
         self.z = 0.0
+        self.status = False
 #Radio positioning and locating system.
 class Radar(System):
     def __init__(self):
         System.__init__(self)
         self.coordinates = []
         self.delta2 = 0
-        self.status = True
+        self.status = False
     def activity(self):
+        if self.status == False:
+            return
         self.delta2 += self.delta
         if self.delta2 > some config value:
             self.delta2 = 0
             for obj in within(self.Ship,some config value):
                 #Algorithm to find object's placement. Take into account the status of the armor, interference close to the ship, interference close to the object, interference in the object, and distance between object and ship.
                 #Store the result in a tuple. One part of the tuple contains a coordinate tuple (x,y,z,accuracy) and the other part contains the object itself.
+    def setStatus(self,status):
+        if status == False:
+            self.status = False
+            return True
+        if self.Power.radar < some config value:
+            return "Insufficient power."
+        if self.Repair.radar < some config value:
+            return "System damaged."
+        self.status = True
+        return True
+    @watch("Power","radar")
+    def power_changed(self):
+        if self.Power.radar < some config value:
+            self.status = False
+    @watch("Repair","radar")
+    def repair_changed(self):
+        if self.Repair.radar < some config value:
+            self.status = False
 #Basic message transciever.
 class Radio(System):
     def __init__(self):
