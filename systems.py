@@ -427,7 +427,7 @@ class Radar(System):
         self.delta2 += self.delta
         if self.delta2 > some config value:
             self.delta2 = 0
-            for obj in within(Ship,some config value):
+            for obj in within(self.Ship,some config value):
                 #Algorithm to find object's placement. Take into account the status of the armor, interference close to the ship, interference close to the object, interference in the object, and distance between object and ship.
                 #Store the result in a tuple. One part of the tuple contains a coordinate tuple (x,y,z,accuracy) and the other part contains the object itself.
 #Basic message transciever.
