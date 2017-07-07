@@ -280,9 +280,10 @@ class Power(System):
         self.course = 0
         self.generator = 0
         self.armor = 0
+        self.repair = 0
         self.in_use = 0
         self.available = 0
-        self.priority = ["lights","battery","sensors","radio","engine","radar","lasers","transporter","targeting","security","thrusters","course","generator","armor"]
+        self.priority = ["lights","battery","sensors","radio","engine","radar","lasers","transporter","targeting","security","thrusters","course","generator","armor","repair"]
     @watch("Battery","available")
     def battery_available(self):
         self.available = self.Battery.available + self.Solar.available + self.Generator.available
@@ -410,6 +411,24 @@ class Repair(System):
         self.engine = 100
         self.armor = 100
         self.solar = 100
+        self.status = False
+        #Keep track of supplies
+        #Keep track of power
+    def activity(self):
+        pass
+        #do some cool repair stuff here
+    @watch("Power","repair")
+    def power_changed(self):
+        if self.Power.repair < some config value:
+            self.status = False
+    def setStatus(self,status):
+        if status == False:
+            self.status = False
+            return True
+        if self.Power.repair < some config value:
+            return "Insufficient power."
+        self.status = True
+        return True
 #Positioning using long-range satellite transmissions, and data analysis.
 class Sensors(System):
     def __init__(self):
@@ -418,6 +437,45 @@ class Sensors(System):
         self.y = 0.0
         self.z = 0.0
         self.status = False
+        self.bootup = -1
+    def setStatus(self,status):
+        if status == False:
+            self.status = False
+            return True
+        if self.Power.sensors < some config value:
+            return "Insufficient power."
+        if self.Repair.sensors < some config value:
+            return "System damaged."
+        #Check for satellites, and ping them.
+        #Startup begin successfully. takes around 30 seconds in activity thread. Base on distance of satellites.
+        return True
+    @watch("Power","sensors")
+    def power_changed(self):
+        if self.Power.sensors < some config value:
+            self.status = False
+    @watch("Repair","sensors")
+    def repair_changed(self):
+        if self.Repair.sensors < some config value:
+            self.status = False
+    @watch("Ship","x")
+    def x_changed(self):
+        if self.status == True:
+            self.x = self.Ship.x #compensate for inconsistencies.
+    @watch("Ship","y")
+    def y_changed(self):
+        if self.status == True:
+            self.y = self.Ship.y #compensate for inconsistencies.
+    @watch("Ship","z")
+    def z_changed(self):
+        if self.status == True:
+            self.z = self.Ship.z #compensate for inconsistencies.
+    def activity(self):
+        if self.bootup > 0:
+            self.bootup -= self.delta
+        if self.bootup = 0 and other conditions:
+            self.status = True
+            self.bootup = -1
+        #implement 30 second wait for powering on.
 #Radio positioning and locating system.
 class Radar(System):
     def __init__(self):
