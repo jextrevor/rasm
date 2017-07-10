@@ -96,6 +96,8 @@ class Object(System):
         self.ax = 0.0
         self.ay = 0.0
         self.az = 0.0
+        self.pitch = 0.0
+        self.yaw = 0.0
         self.name = name
         self.properties = []
     def activity(self):
@@ -436,8 +438,14 @@ class Sensors(System):
         self.x = 0.0
         self.y = 0.0
         self.z = 0.0
+        self.vx = 0.0
+        self.vy = 0.0
+        self.vz = 0.0
+        self.pitch = 0.0
+        self.yaw = 0.0
         self.status = False
         self.bootup = -1
+        self.scan = -1
     def setStatus(self,status):
         if status == False:
             self.status = False
@@ -449,6 +457,8 @@ class Sensors(System):
         #Check for satellites, and ping them.
         #Startup begin successfully. takes around 30 seconds in activity thread. Base on distance of satellites.
         return True
+    def scan(self,object):
+        #Scan object. Takes a few seconds in activity thread. Base on object "complexity"
     @watch("Power","sensors")
     def power_changed(self):
         if self.Power.sensors < some config value:
@@ -472,9 +482,13 @@ class Sensors(System):
     def activity(self):
         if self.bootup > 0:
             self.bootup -= self.delta
-        if self.bootup = 0 and other conditions:
+        if self.bootup == 0 and self.Power.sensors > some config value and self.Repair.sensors > some config value:
             self.status = True
             self.bootup = -1
+        if self.scan > 0:
+            self.scan -= self.delta
+        if self.scan == 0 and self.status == True:
+            #return scan data.
         #implement 30 second wait for powering on.
 #Radio positioning and locating system.
 class Radar(System):
@@ -514,19 +528,95 @@ class Radar(System):
 class Radio(System):
     def __init__(self):
         System.__init__(self)
+        self.status = False
+    def setStatus(self,status):
+        if status == False:
+            self.status = False
+            return True
+        if self.Power.radio < some config value:
+            return "Insufficient power."
+        if self.Repair.radio < some config value:
+            return "System damaged."
+        self.status = True
+        return True
+    @watch("Power","radio")
+    def power_changed(self):
+        if self.Power.radio < some config value:
+            self.status = False
+    @watch("Repair","radio")
+    def repair_changed(self):
+        if self.Repair.radio < some config value:
+            self.status = False
 #Semi-accurate positioning and aiming system for use with lasers.
 class Targeting(System):
     def __init__(self):
         System.__init__(self)
+        self.status = False
+    def setStatus(self,status):
+        if status == False:
+            self.status = False
+            return True
+        if self.Power.targeting < some config value:
+            return "Insufficient power."
+        if self.Repair.targeting < some config value:
+            return "System damaged."
+        self.status = True
+        return True
+    @watch("Power","targeting")
+    def power_changed(self):
+        if self.Power.targeting < some config value:
+            self.status = False
+    @watch("Repair","targeting")
+    def repair_changed(self):
+        if self.Repair.targeting < some config value:
+            self.status = False
 #Short, high energy laser based weaponry system, powered through capacitor bays.
 class Lasers(System):
     def __init__(self):
         System.__init__(self)
+        self.status = False
+    def setStatus(self,status):
+        if status == False:
+            self.status = False
+            return True
+        if self.Power.lasers < some config value:
+            return "Insufficient power."
+        if self.Repair.lasers < some config value:
+            return "System damaged."
+        self.status = True
+        return True
+    @watch("Power","lasers")
+    def power_changed(self):
+        if self.Power.lasers < some config value:
+            self.status = False
+    @watch("Repair","lasers")
+    def repair_changed(self):
+        if self.Repair.lasers < some config value:
+            self.status = False
 #Intercom system for security teams.
 class Security(System):
     def __init__(self):
         System.__init__(self)
         self.SecurityTeam = []
+        self.status = False
+    def setStatus(self,status):
+        if status == False:
+            self.status = False
+            return True
+        if self.Power.security < some config value:
+            return "Insufficient power."
+        if self.Repair.security < some config value:
+            return "System damaged."
+        self.status = True
+        return True
+    @watch("Power","security")
+    def power_changed(self):
+        if self.Power.security < some config value:
+            self.status = False
+    @watch("Repair","security")
+    def repair_changed(self):
+        if self.Repair.security < some config value:
+            self.status = False
 class SecurityTeam(Cargo):
     def __init__(self,location,name):
         Cargo.__init__(self,location,name)
@@ -535,14 +625,73 @@ class SecurityTeam(Cargo):
 class Transporter(System):
     def __init__(self):
         System.__init__(self)
+        self.status = False
+    def setStatus(self,status):
+        if status == False:
+            self.status = False
+            return True
+        if self.Power.transporter < some config value:
+            return "Insufficient power."
+        if self.Repair.transporter < some config value:
+            return "System damaged."
+        self.status = True
+        return True
+    @watch("Power","transporter")
+    def power_changed(self):
+        if self.Power.transporter < some config value:
+            self.status = False
+    @watch("Repair","transporter")
+    def repair_changed(self):
+        if self.Repair.transporter < some config value:
+            self.status = False
 #Using sensors, a high precision orienting system.
 class Thrusters(System):
     def __init__(self):
         System.__init__(self)
+        self.pitch = 0.0
+        self.yaw = 0.0
+        self.status = False
+    def setStatus(self,status):
+        if status == False:
+            self.status = False
+            return True
+        if self.Power.thrusters < some config value:
+            return "Insufficient power."
+        if self.Repair.thrusters < some config value:
+            return "System damaged."
+        self.status = True
+        return True
+    @watch("Power","thrusters")
+    def power_changed(self):
+        if self.Power.thrusters < some config value:
+            self.status = False
+    @watch("Repair","thrusters")
+    def repair_changed(self):
+        if self.Repair.thrusters < some config value:
+            self.status = False
 #Switchable highly reflective ship armour.
 class Armor(System):
     def __init__(self):
         System.__init__(self)
+        self.status = False
+    def setStatus(self,status):
+        if status == False:
+            self.status = False
+            return True
+        if self.Power.armor < some config value:
+            return "Insufficient power."
+        if self.Repair.armor < some config value:
+            return "System damaged."
+        self.status = True
+        return True
+    @watch("Power","armor")
+    def power_changed(self):
+        if self.Power.armor < some config value:
+            self.status = False
+    @watch("Repair","armor")
+    def repair_changed(self):
+        if self.Repair.armor < some config value:
+            self.status = False
 #The target velocity needs to be calculated. This involves calculating the ship's current pitch and yaw and making a directional vector, then multiplying it by the target speed.
 #Next, the difference between the target velocity and the current velocity needs to be calculated.
 #Next, the engine needs to normalize the difference, and apply a force along it.
@@ -550,6 +699,28 @@ class Armor(System):
 class Engine(System):
     def __init__(self):
         System.__init__(self)
+        self.x = 0.0
+        self.y = 0.0
+        self.z = 0.0
+        self.status = False
+    def setStatus(self,status):
+        if status == False:
+            self.status = False
+            return True
+        if self.Power.engine < some config value:
+            return "Insufficient power."
+        if self.Repair.engine < some config value:
+            return "System damaged."
+        self.status = True
+        return True
+    @watch("Power","engine")
+    def power_changed(self):
+        if self.Power.engine < some config value:
+            self.status = False
+    @watch("Repair","engine")
+    def repair_changed(self):
+        if self.Repair.engine < some config value:
+            self.status = False
 ship = Ship(0,0,0,"Enterprise","USS")
 ship2 = Ship(0,49.9,0,"Enterprise2","USS")
 c1 = Cargo(ship,"Engine Room")
